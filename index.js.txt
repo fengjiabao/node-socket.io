@@ -1,0 +1,61 @@
+var lineReader = require('line-reader');
+var app = require('express')();
+var http = require('http').Server(app);
+var ioserver = require('socket.io')(http);
+var io = require('socket.io-client');
+var socket = io.connect('http://192.168.118.198:8086',{
+  // "force new connection": true,
+  'reconnectionAttempts': 'Infinity', // avoid having user reconnect manually in order to prevent dead clients after a server restart
+  'timeout': 10000, // 10s, before connect_error and connect_timeout are emitted.
+  'transports': ['websocket']
+});
+
+const fs = require('fs');  
+var fileName = 'rtdata.txt';  
+fs.watch(fileName,( function () {  
+    return function(){  
+  		readLine();
+    };  
+})());  
+console.log("watching file...");
+
+//16005,w3305辅运顺槽主风筒，16006，w3305辅运顺槽副风筒
+function readLine(){
+		var arr = [];
+		var dataIndex = ['16004','16007','16001','16002','16003','16005','16006'];
+		lineReader.eachLine('rtdata.txt', function(line, last) {
+			dealData(line,arr,dataIndex);
+			if(last){
+				var msg = {
+					cmd: 'environmental_data',
+					data: arr
+				};
+				console.log(msg);
+    		socket.emit('DATA',msg);
+			}
+		});
+}
+
+
+function dealData(data,arr,dataIndex){
+	var arrLine = data.split(','),msg;
+	if(dataIndex.includes(arrLine[0]){
+		msg = {
+				id: Number(arrLine[0]),
+				data: arrLine
+			};
+		arr.push(msg);
+	}
+}
+
+
+//http.listen(3000, function() {//登录时发送
+//	console.log('listening on *:3000');
+//});
+//
+//ioserver.on('connection', function(socket) {
+//	console.log('a user connected');
+//	socket.on('new user login', function(msg) {
+//		readLine();
+//	});
+//});
